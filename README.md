@@ -1,12 +1,12 @@
 # Odasrv-Wrapper
 
-> A template for wrapping Odamex servers with pexpect
+> A template for wrapping [Odamex](https://odamex.net) servers with pexpect
 
 #### Setup
 
 ``` bash
 # install dependencies
-[Odamex](https://odamex.net) / Odasrv
+Odamex / Odasrv
 Python 3
 pip3 install pexpect
 
