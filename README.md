@@ -7,15 +7,15 @@
 ``` bash
 # install dependencies
 Odamex / Odasrv
-Python 3
-pip3 install pexpect
+Python 3.10+
+pip3 install -r requirements.txt
 
 # edit odasrv-wrapper.py to achieve your goal
 
 # place odasrv-wrapper.py in your odasrv directory
 
 # launch odasrv with odasrv-wrapper
-python3 odasrv-wrapper.py
+python3 odasrv-wrapper.py './odasrv -config ./odasrv.cfg'
 
 # enjoy
 Join your server!
