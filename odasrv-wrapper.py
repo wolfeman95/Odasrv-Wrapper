@@ -25,7 +25,7 @@ class MsgType(Enum):
 class OdasrvRegex:
     re_str: str
     msg_type: MsgType = MsgType.CONSOLE
-    msg_subtype: str = ''
+    msg_subtype: str | None = None
 
 MAX_MSG_TYPE_NAME: int = max(len(t.name) for t in MsgType)
 
@@ -34,9 +34,9 @@ ODASRV_REGEXES: list[OdasrvRegex] = [
     OdasrvRegex(r'\[(\d{2}):(\d{2}):(\d{2})\] (?P<player>(.+)+) has connected.', MsgType.CONNECT),
     OdasrvRegex(r'\[(\d{2}):(\d{2}):(\d{2})\] (?P<player>(.+)+) joined the game.', MsgType.JOIN),
     OdasrvRegex(r'\[(\d{2}):(\d{2}):(\d{2})\] (?P<player>(.+)+) became a spectator.', MsgType.SPECTATE),
-    OdasrvRegex(r'\[(\d{2}):(\d{2}):(\d{2})\] (?P<player>(.+)+) disconnected\. .((.+)+)$', MsgType.DISCONNECT),
-    OdasrvRegex(r'\[(\d{2}):(\d{2}):(\d{2})\] (?P<player>(.+)+) timed out\. .((.+)+)$', MsgType.DISCONNECT),
-    OdasrvRegex(r'\[(\d{2}):(\d{2}):(\d{2})\] (?P<player>(.+)+) was kicked from the server!', MsgType.DISCONNECT),
+    OdasrvRegex(r'\[(\d{2}):(\d{2}):(\d{2})\] (?P<player>(.+)+) disconnected\. .((.+)+)$', MsgType.DISCONNECT, 'quit'),
+    OdasrvRegex(r'\[(\d{2}):(\d{2}):(\d{2})\] (?P<player>(.+)+) timed out\. .((.+)+)$', MsgType.DISCONNECT, 'timed out'),
+    OdasrvRegex(r'\[(\d{2}):(\d{2}):(\d{2})\] (?P<player>(.+)+) was kicked from the server!', MsgType.DISCONNECT, 'kicked'),
     OdasrvRegex(r'\[(\d{2}):(\d{2}):(\d{2})\] Vote map ((.+)+) passed! .((.+)+)$', MsgType.MAP_VOTE),
     OdasrvRegex(r'\[(\d{2}):(\d{2}):(\d{2})\] --- MAP(\d{2}): "(?P<map>(.+)+)" ---', MsgType.MAP_CHANGE),
     OdasrvRegex(r'\[(\d{2}):(\d{2}):(\d{2})\] The match has started.', MsgType.MATCH_START),
@@ -69,17 +69,17 @@ ODASRV_REGEXES: list[OdasrvRegex] = [
 class OdaSrvMsg:
     def __init__(self, line: str) -> None:
         self.line: str = line
-        self.msg_date: datetime = datetime.now()
+        self.datetime: datetime = datetime.now()
         self.odasrv_regex: OdasrvRegex = self.get_odasrv_regex()
+        self.type: MsgType = self.odasrv_regex.msg_type
+        self.subtype: str | None = self.odasrv_regex.msg_subtype
         self.regex_match: re.Match[str] | None = re.match(self.odasrv_regex.re_str, line)
-        self.msg_type: MsgType = self.odasrv_regex.msg_type
         self.player: str | None = self.regex_match['player'] if self.has_player_group() and self.regex_match else None
-        self.map: str | None = self.regex_match['map'] if self.msg_type == MsgType.MAP_CHANGE and self.regex_match else None
-        self.victim: str | None = self.regex_match['victim'] if self.msg_type == MsgType.FRAG  and self.regex_match else None
-        self.weapon: str = self.odasrv_regex.msg_subtype
+        self.map: str | None = self.regex_match['map'] if self.type == MsgType.MAP_CHANGE and self.regex_match else None
+        self.victim: str | None = self.regex_match['victim'] if self.type == MsgType.FRAG  and self.regex_match else None
 
     def __str__(self) -> str:
-        return f'> [{self.msg_type}] ' + (' ' * (MAX_MSG_TYPE_NAME - len(self.msg_type.name))) + self.line
+        return f'> [{self.type}] ' + (' ' * (MAX_MSG_TYPE_NAME - len(self.type.name))) + self.line
 
     def get_odasrv_regex(self) -> OdasrvRegex:
         for reg in ODASRV_REGEXES:
@@ -88,7 +88,7 @@ class OdaSrvMsg:
         return OdasrvRegex(r'\b\B') # will never match
 
     def has_player_group(self) -> bool:
-        if self.msg_type in [MsgType.CONNECT, MsgType.JOIN, MsgType.SPECTATE, MsgType.DISCONNECT, MsgType.FRAG, MsgType.SUICIDE, MsgType.DUEL_WIN]:
+        if self.type in [MsgType.CONNECT, MsgType.JOIN, MsgType.SPECTATE, MsgType.DISCONNECT, MsgType.FRAG, MsgType.SUICIDE, MsgType.DUEL_WIN]:
             return True 
         return False    
 
@@ -105,7 +105,7 @@ class OdasrvInstance:
             msg: OdaSrvMsg = OdaSrvMsg(line)
             print(msg, end='')
 
-            match msg.msg_type:
+            match msg.type:
                 case MsgType.CONSOLE:
                     continue
                 case MsgType.CHAT:
@@ -120,7 +120,7 @@ class OdasrvInstance:
                     self.players_in_server -= 1
                     _ = self.odasrv.sendline(f'say {msg.player} went bye-bye, there are {self.players_in_server} players in the server now')
                 case MsgType.FRAG:
-                    _ = self.odasrv.sendline(f'say you already know but {msg.player} just fragged {msg.victim} with the {msg.weapon}')
+                    _ = self.odasrv.sendline(f'say you already know but {msg.player} just fragged {msg.victim} with the {msg.subtype}')
                 case MsgType.SUICIDE:
                     _ = self.odasrv.sendline('say ouch')
                 case _: 
