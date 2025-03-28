@@ -1,6 +1,7 @@
 # Odasrv-Wrapper
 
-> A template for wrapping [Odamex](https://odamex.net) servers with pexpect
+> A template for wrapping [Odamex](https://odamex.net) servers with pexpect. Example use cases are stat collection,
+> automated moderation, or just harassing players in the server
 
 #### Setup
 
